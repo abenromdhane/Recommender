@@ -28,7 +28,7 @@
 #define _UTILS_H_
 
 #include <stddef.h>
-
+#include "box_muller.h"
 /* MSVC doesn't define fmax/fmin in math.h */
 #if defined(_WIN32) || defined(_WIN64)
 #define fmax max
@@ -84,12 +84,12 @@ scalar_product(double * vector,double scalar,size_t dim);
 /*
  * Generate a random vector
  */
-double * generate_random_vector(int n,int seed);
+double * generate_random_vector(int n,box_muller_generator_t* gen);
 
 /*
  * Generate a random matrix
  */
-double** generate_random_matrix(int nrow,int ncol,int seed);
+double** generate_random_matrix(int nrow,int ncol,box_muller_generator_t* gen);
 
 #endif
 

@@ -231,7 +231,7 @@ void update_learning_with_training_set (training_set_t * old_tset, training_set_
 
 	double r_iu = 0;
 	double e_iu = 0;
-	double score,sig_score, prediction,curr_loss;
+	double score,sig_score, prediction;
 
 	add_training_set (old_tset, new_tset);
 	calculate_average_ratings (old_tset, lfactors);
@@ -252,7 +252,6 @@ void update_learning_with_training_set (training_set_t * old_tset, training_set_
 			prediction = 1 + sig_score * 4;
 
 			e_iu = r_iu - prediction;
-			curr_loss += pow (e_iu, 2);
 			if (e_iu)
 			{
 				compute_factors_bias (u, i, lfactors, e_iu * sig_score * (1 - sig_score) * 4 , &params);

@@ -3,7 +3,7 @@
 
 #include "k_fold_parameters.h"
 #include "training_set.h"
-
+#include "sparse_matrix.h"
 
 
 /*
@@ -19,7 +19,7 @@
 *		return the RMSE
 **/
 double RMSE (learned_factors_t* learned, training_set_t * _validation_set,
-             training_set_t * tset) ;
+             training_set_t * tset,k_fold_parameters_t k_fold_params) ;
 
 /*
 * RMSE : Calculate the RMSE

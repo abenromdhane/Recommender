@@ -4,13 +4,14 @@
 #include "learned_factors.h"
 #include "rating_estimator.h"
 #include "learning_algorithm.h"
+#include "social_reg.h"
 
 struct learned_factors*
 	learn_social(learning_algorithm_params_t learning_param);
 
 
 double
-estimate_rating_social(rating_estimator_parameters_t* estim_param);
+estimate_rating_social(rating_estimator_parameters_t* estim_param,sparse_matrix_t* social);
 
 
 #endif

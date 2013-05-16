@@ -10,17 +10,28 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include "box_muller.h"
 
-double box_muller(double m, double s)	/* normal random variate generator */
+box_muller_generator_t* init_box_muller_generator(int seed,	double sd,double mean)
+{
+	box_muller_generator_t* gen = malloc(sizeof(box_muller_generator_t));
+	gen->mean = mean;
+	gen->sd = sd;
+	gen->seed = seed;
+	gen->use_last = 0;
+	srand(seed);
+	return gen;
+}
+
+
+double box_muller(box_muller_generator_t* gen)	/* normal random variate generator */
 {				        /* mean m, standard deviation s */
 	double x1, x2, w, y1;
-	static double y2;
-	static int use_last = 0;
 
-	if (use_last)		        /* use value from previous call */
+	if (gen->use_last)		        /* use value from previous call */
 	{
-		y1 = y2;
-		use_last = 0;
+		y1 = gen->last_value;
+		gen->use_last = 0;
 	}
 	else
 	{
@@ -32,11 +43,11 @@ double box_muller(double m, double s)	/* normal random variate generator */
 
 		w = sqrt( (-2.0 * log( w ) ) / w );
 		y1 = x1 * w;
-		y2 = x2 * w;
-		use_last = 1;
+		gen->last_value = x2 * w;
+		gen->use_last = 1;
 	}
 
-	return( m + y1 * s );
+	return( gen->mean + y1 * gen->sd );
 }
 
 

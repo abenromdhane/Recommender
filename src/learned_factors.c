@@ -40,11 +40,13 @@
 #include <math.h>
 #include <assert.h>
 #include "utils.h"
+#include "box_muller.h"
 struct learned_factors*
 init_learned_factors (struct model_parameters params)
 {
 	struct learned_factors* lfactors =
 	    malloc (sizeof (struct learned_factors) );
+	box_muller_generator_t* gen = init_box_muller_generator(1,0.1,0);
 
 	if (!lfactors)
 	{
@@ -54,16 +56,15 @@ init_learned_factors (struct model_parameters params)
 	lfactors->x=NULL;
 	lfactors->y = NULL;
 	lfactors->ratings_average = 0;
+	
 
-
-
-	lfactors->item_factor_vectors = generate_random_matrix (params.items_number, params.dimensionality, params.seed);
+	lfactors->item_factor_vectors = generate_random_matrix (params.items_number, params.dimensionality, gen);
 	if(params.algoithm_type == NEIGHBOURS_MF)
 	{
-	lfactors->y = generate_random_matrix (params.items_number, params.dimensionality, params.seed);
-	lfactors->x = generate_random_matrix (params.items_number, params.items_number, params.seed);
+	lfactors->y = generate_random_matrix (params.items_number, params.dimensionality, gen);
+	lfactors->x = generate_random_matrix (params.items_number, params.items_number, gen);
 	}
-	lfactors->user_factor_vectors = generate_random_matrix (params.users_number, params.dimensionality, params.seed);
+	lfactors->user_factor_vectors = generate_random_matrix (params.users_number, params.dimensionality, gen);
 	lfactors->user_bias = malloc (sizeof (double) *params.users_number);
 	lfactors->item_bias = malloc (sizeof (double) *params.items_number);
 	memset (lfactors->user_bias, 0.0, params.users_number*sizeof (double) );

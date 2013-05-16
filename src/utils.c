@@ -132,31 +132,30 @@ double pearson_correlation_coefficient(double* vectX, double* vectY, size_t dim)
 
 
 
-double** generate_random_matrix(int nrow,int ncol,int seed)
+double** generate_random_matrix(int nrow,int ncol,box_muller_generator_t* gen)
 {
 	int i;
 	int j;
 	double ** matrix=malloc(nrow * sizeof(double*));
-	srand(seed);
+	
 	for (i=0; i<nrow; i++)
 	{
 		matrix [i] = malloc(ncol * sizeof(double));
 		for (j=0; j < ncol; j++)
 		{
-			matrix[i][j] = box_muller(0,0.1);
+			matrix[i][j] = box_muller(gen);
 		}
 	}
 	return matrix;
 }
 
-double * generate_random_vector(int n,int seed)
+double * generate_random_vector(int n,box_muller_generator_t* gen)
 {
 	int i;
 	double * vect=malloc(n * sizeof(double));
-	srand(seed);
 	for (i=0; i<n; i++)
 	{
-			vect[i] = box_muller(0,0.1);
+			vect[i] = box_muller(gen);
 	}
 	return vect;
 }

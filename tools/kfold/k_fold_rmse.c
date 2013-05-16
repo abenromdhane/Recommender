@@ -38,7 +38,7 @@ double RMSE_mean (k_fold_parameters_t k_fold_params)
 		
 		compile_training_set (tset);
 		learned = learn(tset,k_fold_params.model);
-		RMSE_sum += RMSE (learned,validation_set,tset);
+		RMSE_sum += RMSE (learned,validation_set,tset,k_fold_params);
 		
 		free_learned_factors(learned);
 		free_training_set (tset);
@@ -54,7 +54,7 @@ double RMSE_mean (k_fold_parameters_t k_fold_params)
 
 
 double RMSE (learned_factors_t* learned, training_set_t * _validation_set,
-             training_set_t * tset)
+             training_set_t * tset,k_fold_parameters_t k_fold_params)
 {
 	unsigned int i;
 	double sum = 0;
@@ -70,7 +70,7 @@ double RMSE (learned_factors_t* learned, training_set_t * _validation_set,
 		u = _validation_set->ratings->entries[s].column_j;
 		estim_param->item_index = i;
 		estim_param->user_index = u;
-		a = estimate_rating_social (estim_param);
+		a = estimate_rating_from_factors(estim_param,k_fold_params.model);
 		sum += pow (_validation_set->ratings->entries[s].value -
 			a , 2) / ((double)_validation_set->training_set_size);
 	}

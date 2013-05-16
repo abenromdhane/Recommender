@@ -147,7 +147,7 @@ learn_basic_mf(learning_algorithm_params_t learning_params)
 
 	for (k = 0; k < learning_params.params.iteration_number; k++)
 	{
-		for (r = 0; r < learning_params.params.training_set_size; r++)
+		for (r = 0; r < learning_params.tset->training_set_size; r++)
 		{
 			 r_iu = learning_params.tset->ratings->entries[r].value;
 

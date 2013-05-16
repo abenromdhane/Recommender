@@ -70,14 +70,14 @@ calculate_average_ratings (struct training_set* tset, learned_factors_t* lfactor
 void
 update_learned_factors_social (struct learned_factors* lfactors, struct training_set* tset, sparse_matrix_t* social_matrix, struct model_parameters params)
 {
-	size_t r, k, i, u, n;
+	size_t r, k, i, u, n, vv;
 
 	double r_iu = 0;
 
 	double e_iu = 0;
 	double prediction;
 	double *sum = malloc (sizeof (double) * params.dimensionality);
-	/*double *friend_sum = malloc (sizeof (double) * params.dimensionality);*/
+	/double *friend_sum = malloc (sizeof (double) * params.dimensionality);
 	double* user_bias_copy;
 	double** user_factors_copy;
 	lfactors->dimensionality = params.dimensionality;
