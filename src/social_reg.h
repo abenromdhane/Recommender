@@ -11,7 +11,7 @@ struct learned_factors*
 
 
 double
-estimate_rating_social(rating_estimator_parameters_t* estim_param,sparse_matrix_t* social);
+estimate_rating_social(rating_estimator_parameters_t* estim_param);
 
 
 #endif
