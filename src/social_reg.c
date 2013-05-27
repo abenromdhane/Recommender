@@ -55,6 +55,7 @@ compute_factors_social (	size_t user_index,
 	}
 }
 
+
 static void
 calculate_average_ratings (struct training_set* tset, learned_factors_t* lfactors)
 {
