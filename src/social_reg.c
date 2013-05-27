@@ -77,7 +77,7 @@ update_learned_factors_social (struct learned_factors* lfactors, struct training
 	double e_iu = 0;
 	double prediction;
 	double *sum = malloc (sizeof (double) * params.dimensionality);
-	/*double *friend_sum = malloc (sizeof (double) * params.dimensionality);*/
+
 	double* user_bias_copy;
 	double** user_factors_copy;
 	lfactors->dimensionality = params.dimensionality;
@@ -159,39 +159,6 @@ update_learned_factors_social (struct learned_factors* lfactors, struct training
 			}
 			lfactors->user_bias[u] -= params.betha * params.step_bias * (user_bias_copy[u] - bias_diff);
 
-			
-			/*bias_diff = 0;
-			memset (sum, 0, params.dimensionality * sizeof (double) );*/
-			/*for (v = 0 ; v < user_relations->current_size; v++)
-			{
-				size_t friend_id = user_relations->entries[v].column_j;
-				coo_matrix_t* friend_relations = get_row_in_coo (social_matrix, friend_id);
-				double friend_bias_diff = 0;
-				memset (friend_sum, 0, params.dimensionality * sizeof (double) );
-
-				for (vv = 0 ; vv < friend_relations->current_size; vv++)
-				{
-					for (r = 0; r < params.dimensionality; r++)
-					{
-						friend_sum[r] += user_factors_copy[friend_relations->entries[vv].column_j][r] / friend_relations->current_size;
-					}
-					friend_bias_diff += user_bias_copy[friend_relations->entries[vv].column_j] / friend_relations->current_size;
-				}
-				for (r = 0; r < params.dimensionality; r++)
-				{
-					sum[r] += (user_factors_copy[friend_id][r] - friend_sum[r]) / user_relations->current_size;
-				}
-				bias_diff += (user_bias_copy[friend_id] - friend_bias_diff) / user_relations->current_size;
-
-				free_coo_matrix (friend_relations);
-			}
-			for (r = 0; r < params.dimensionality; r++)
-			{
-				lfactors->user_factor_vectors[u][r] += params.betha * params.step * ( sum[r]);
-			}
-			lfactors->user_bias[u] +=  params.betha  * params.step_bias * (bias_diff);
-*/
-
 			free_coo_matrix (user_relations);
 		}
 
@@ -260,7 +227,6 @@ estimate_rating_social (rating_estimator_parameters_t* estim_param)
 
 	double* item_factors;
 	double* user_factors;
-	/*coo_matrix_t* user_relations = get_row_in_coo (social_matrix, user_index);*/
 	double item_bias;
 	double user_bias;
 	double score;
@@ -281,20 +247,6 @@ estimate_rating_social (rating_estimator_parameters_t* estim_param)
 		sum += user_factors[i] * item_factors[i] ;
 	}
 
-	/*for (v = 0; v < user_relations->current_size; v++)
-	{
-		for (i = 0; i < lfactors->dimensionality; i++)
-		{
-			sum_social += lfactors->user_factor_vectors[user_relations->entries[v].column_j][i] * item_factors[i];
-		}
-		bias_social += lfactors->user_bias[user_relations->entries[v].column_j];
-	}
-	if(user_relations->current_size)
-	{
-	sum_social /= user_relations->current_size;
-	bias_social /= user_relations->current_size;
-	}
-	free_coo_matrix (user_relations);*/
 	score =  sum +  bias ;
 	if (score>5)
 		return 5;

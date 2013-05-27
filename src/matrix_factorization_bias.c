@@ -66,10 +66,10 @@ compute_factors_bias (  size_t user_index,
 	user_factors = lfactors->user_factor_vectors[user_index];
 
 	lfactors->user_bias[user_index] = lfactors->user_bias[user_index] +
-	                                  params->step_bias * (predicted_error - params->lambda_bias *  lfactors->user_bias[user_index]);
+	                                  params->step_bias * (predicted_error);
 
 	lfactors->item_bias[item_index] = lfactors->item_bias[item_index] +
-	                                  params->step_bias * (predicted_error - params->step_bias *  lfactors->item_bias[item_index]);
+	                                  params->step_bias * (predicted_error);
 
 	assert (is_valid (lfactors->user_bias[user_index]) );
 	assert (is_valid (lfactors->item_bias[item_index]) );
@@ -137,7 +137,7 @@ update_learned_factors_mf_bias (struct learned_factors* lfactors, struct trainin
 
 			score = lfactors->ratings_average + lfactors->user_bias[u] + lfactors->item_bias[i] +
 			        dot_product (lfactors->user_factor_vectors[u], lfactors->item_factor_vectors[i], lfactors->dimensionality);
-			sig_score = 1 / (1 + exp (-score) );
+			sig_score = 1.0 / (1.0 + exp (-score) );
 			prediction = 1 + sig_score * 4;
 
 			e_iu = r_iu - prediction;
@@ -146,7 +146,28 @@ update_learned_factors_mf_bias (struct learned_factors* lfactors, struct trainin
 			{
 				compute_factors_bias (u, i, lfactors, e_iu * sig_score * (1 - sig_score) * 4 , &params);
 			}
+			
 		}
+		for (u = 0; u < params.users_number; u++)
+		{
+			lfactors->user_bias[u] -= params.step_bias * lfactors->user_bias[u] * params.lambda_bias;
+		}
+		for (i = 0; i < params.items_number; i++)
+		{
+			lfactors->item_bias[i] -= params.step_bias * lfactors->item_bias[i] * params.lambda_bias;
+		}
+
+		for (u = 0; u < params.users_number; u++)
+			for (r = 0; r < params.dimensionality; r++)
+			{
+				lfactors->user_factor_vectors[u][r] -= params.step * lfactors->user_factor_vectors[u][r] * params.lambda;
+			}
+
+		for (i = 0; i < params.items_number; i++)
+			for (r = 0; r < params.dimensionality; r++)
+			{
+				lfactors->item_factor_vectors[i][r] -= params.step * lfactors->item_factor_vectors[i][r] * params.lambda;
+			}
 	}
 }
 
