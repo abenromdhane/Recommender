@@ -76,15 +76,16 @@ double
  */
 recommended_items_t*
 	recommend_items(rating_estimator_parameters_t* estim_param,
-		learning_model_t model)
+		learning_model_t model,size_t items_number)
 {
 	size_t j;
-	recommended_items_t* r_items = init_recommended_items(estim_param->lfactors->items_number);
+	recommended_items_t* r_items = init_recommended_items(items_number);
 
 	assert (model.learning_algorithm && model.rating_estimator);
 
 	for (j = 0; j < estim_param->tset->items_number; j++)
 	{
+		estim_param->item_index =j;
 		insert_recommended_item(j, (float) model.rating_estimator(estim_param), r_items);
 	}
 

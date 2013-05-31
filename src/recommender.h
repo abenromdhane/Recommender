@@ -107,9 +107,12 @@ double
 */
 recommended_items_t*
 	recommend_items(rating_estimator_parameters_t* estim_param,
-		learning_model_t model);
+		learning_model_t model, size_t items_number);
 
 void update_learning(training_set_t * old_tset, training_set_t* new_tset, learned_factors_t* lfactors,
 		struct learning_model model);
+
+struct learned_factors*
+copy_learned_factors (struct learned_factors* factors);
 
 #endif /* RECOMMANDER_H */

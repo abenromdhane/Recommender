@@ -136,3 +136,71 @@ free_learned_factors (learned_factors_t* lfactors)
 	free (lfactors->R_K);
 	free (lfactors);
 }
+
+
+
+
+struct learned_factors*
+copy_learned_factors (struct learned_factors* factors)
+{
+	struct learned_factors* factors_copy =
+	    malloc (sizeof (struct learned_factors) );
+	size_t i;
+	if (!factors)
+	{
+		return NULL;
+	}
+	factors_copy->users_number = factors->users_number;
+	factors_copy->items_number = factors->items_number;
+	factors_copy->dimensionality = factors->dimensionality;
+	factors_copy->ratings_average = factors->ratings_average;
+	factors_copy->x =NULL;
+	factors_copy->y =NULL;
+	if (factors->x != 0)
+	{
+		factors_copy->x = malloc (sizeof (double*) *factors->items_number);
+	}
+	if (factors->y != 0)
+	{
+		factors_copy->y = malloc (sizeof (double*) *factors->items_number);
+	}
+	factors_copy->item_factor_vectors = malloc (sizeof (double*) *factors->items_number);
+	for (i = 0; i < factors->items_number; i++)
+	{
+		if (factors->x != 0)
+		{
+			factors_copy->x[i] = malloc (sizeof (double) * factors->items_number);
+			memcpy (factors_copy->x[i], factors->x[i], factors->items_number * sizeof (double) );
+		}
+		if (factors->y != 0)
+		{
+			factors_copy->y[i] = malloc (sizeof (double) * factors->dimensionality);
+			memcpy (factors_copy->y[i], factors->y[i], factors->dimensionality * sizeof (double) );
+		}
+		factors_copy->item_factor_vectors[i] = malloc (sizeof (double) * factors->dimensionality);
+		memcpy (factors_copy->item_factor_vectors[i], factors->item_factor_vectors[i], factors->dimensionality * sizeof (double) );
+	}
+
+	factors_copy->user_factor_vectors = malloc (sizeof (double*) *factors->users_number);
+	for (i = 0; i < factors->users_number; i++)
+	{
+		factors_copy->user_factor_vectors[i] = malloc (sizeof (double) * factors->dimensionality);
+		memcpy (factors_copy->user_factor_vectors[i], factors->user_factor_vectors[i], factors->dimensionality * sizeof (double) );
+	}
+	factors_copy->user_bias = malloc (sizeof (double) *factors->users_number);
+	factors_copy->item_bias = malloc (sizeof (double) *factors->items_number);
+	memcpy (factors_copy->user_bias, factors->user_bias, factors->users_number * sizeof (double) );
+	memcpy (factors_copy->item_bias, factors->item_bias, factors->items_number * sizeof (double) );
+	factors_copy->R = NULL;
+	factors_copy->R_K = NULL;
+
+	if (!factors_copy->item_factor_vectors ||
+	        !factors_copy->user_factor_vectors ||
+	        !factors_copy->item_bias ||
+	        !factors_copy->user_bias)
+	{
+		return NULL;
+	}
+
+	return factors_copy;
+}
