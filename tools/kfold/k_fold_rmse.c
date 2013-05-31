@@ -31,6 +31,9 @@ double RMSE_mean (k_fold_parameters_t k_fold_params)
 	{
 		k_fold_params.model.social_matrix = extract_social_realtions(k_fold_params.social_relations_file_path,
 										k_fold_params.params.users_number,k_fold_params.social_relations_number);
+	}else
+	{
+		k_fold_params.model.social_matrix = NULL;
 	}
 	for (index = 0; index < k_fold_params.K; index++)
 	{
