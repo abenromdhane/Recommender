@@ -1,5 +1,5 @@
 CFLAGS := -I../../src -g
-TARGETS := http-parser/http_parser.o server_parameters.o webserver.o ../../src/libRecommender.a libuv/uv.a
+TARGETS := http-parser/http_parser.o post_parse.o server_parameters.o webserver.o ../../src/libRecommender.a libuv/uv.a
 CC := gcc
 all : webserver
 
@@ -19,6 +19,8 @@ webserver.o:
 
 server_parameters.o:
 	$(CC) $(CFLAGS) -o server_parameters.o -c server_parameters.c
+post_parse.o:
+	$(CC) $(CFLAGS) -o post_parse.o -c post_parse.c
 
 clean:
 	make -C http-parser clean

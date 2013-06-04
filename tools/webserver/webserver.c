@@ -7,6 +7,7 @@
 #include "server_parameters.h"
 #include "libuv/include/uv.h"
 #include "http-parser/http_parser.h"
+#include "post_parse.h"
 
 #define CHECK(r, msg) \
 if (r) { \
@@ -39,7 +40,6 @@ static uv_mutex_t mutex;
 struct learned_factors* factors;
 struct learned_factors* factors_backup;
 training_set_t* training_set;
-int learning_status; //1 if currently learning 0 else
 server_parameters_t* server_param;
 
 typedef struct
@@ -54,7 +54,7 @@ void on_close (uv_handle_t* handle)
 {
 	client_t* client = (client_t*) handle->data;
 
-	LOGF ("[ %5d ] connection closed", client->request_num);
+	//LOGF ("[ %5d ] connection closed", client->request_num);
 
 	free (client);
 }
@@ -77,9 +77,9 @@ void on_read (uv_stream_t* tcp, ssize_t nread, uv_buf_t buf)
 	{
 		parsed = http_parser_execute (
 		             &client->parser, &parser_settings, buf.base, nread);
-		if (parsed < nread)
+		if (!parsed)
 		{
-			LOG_ERROR ("parse error");
+			LOGF ("parse error %u %u",parsed,nread);
 			uv_close ( (uv_handle_t*) &client->handle, on_close);
 		}
 	}
@@ -108,7 +108,7 @@ void on_connect (uv_stream_t* server_handle, int status)
 	client_t* client = malloc (sizeof (client_t) );
 	client->request_num = request_num;
 
-	LOGF ("[ %5d ] new connection", request_num++);
+	//LOGF ("[ %5d ] new connection", request_num++);
 
 	uv_tcp_init (uv_loop, &client->handle);
 	http_parser_init (&client->parser, HTTP_REQUEST);
@@ -128,7 +128,7 @@ void after_write (uv_write_t* req, int status)
 
 	uv_close ( (uv_handle_t*) req->handle, on_close);
 }
-
+static int* complete;
 int on_headers_complete (http_parser* parser)
 {
 	client_t* client = (client_t*) parser->data;
@@ -141,7 +141,7 @@ int on_headers_complete (http_parser* parser)
 	    &resbuf,
 	    1,
 	    NULL);*/
-
+	//complete=1;
 	return 1;
 }
 
@@ -149,7 +149,7 @@ int on_url (http_parser* parser, const char *at, size_t length)
 {
 	client_t* client = (client_t*) parser->data;
 
-	LOGF ("[ %5d ] url parsed", client->request_num);
+	//LOGF ("[ %5d ] url parsed", client->request_num);
 	struct http_parser_url *u = malloc (sizeof (struct http_parser_url) );
 	uv_tcp_t* handle = &client->handle;
 	char* path = malloc (length * sizeof (char) );
@@ -183,7 +183,7 @@ int on_url (http_parser* parser, const char *at, size_t length)
 		estim_param->user_index = user_id;
 		recommended_items_t* rec = recommend_items (estim_param, server_param->model, 4);
 		uv_mutex_unlock(&mutex);
-		LOG ("recommendation completed");
+		//LOG ("recommendation completed");
 		int i;
 		sprintf (content, "{ \n \"user_index\" : %u, \n",user_id);
 		sprintf (content, "%s \"recommended_items\" : [ \n",content);
@@ -222,7 +222,7 @@ static void thread_method (void* arg)
   uv_mutex_unlock(&mutex);
   free_learned_factors(factors_backup);
   factors_backup = copy_learned_factors (factors);
-  LOG ("Learning completed");
+  //LOG ("Learning completed");
 }
 static void timer_cb(uv_timer_t* handle, int status) {
   printf("TIMER_CB\n");
@@ -233,6 +233,26 @@ static void timer_cb(uv_timer_t* handle, int status) {
   uv_thread_create(&thread_id,thread_method,NULL);
   
   
+}
+int on_value (http_parser* parser, const char *at, size_t length)
+{	
+	client_t* client = (client_t*)(parser->data);
+
+   
+char* a;
+if(!complete[client->request_num])
+{
+
+a = parse_post_request(at,"(user=[[:digit:]]{0,4}&item=[[:digit:]]{0,4})");
+	if(a!=NULL)
+		complete[client->request_num]=1;
+	else
+		return 0;
+	LOGF("%s \n", a);
+	LOGF("%u %u \n", length, client->request_num);
+}
+
+	return 0;
 }
 int main (int argc, char** argv)
 {
@@ -245,10 +265,11 @@ int main (int argc, char** argv)
 	factors = learn (training_set, server_param->model);
 	factors_backup = copy_learned_factors (factors);
 	LOG ("Learning completed");
-	learning_status=0;
-	//parser_settings.on_headers_complete = on_headers_complete;
+	complete = malloc(20 *sizeof(int));
+	memset(complete,0,20 *sizeof(int));
+	parser_settings.on_headers_complete = on_headers_complete;
 	parser_settings.on_url = on_url;
-
+	parser_settings.on_header_value = on_value;
 	uv_loop = uv_default_loop();
 
 	r = uv_tcp_init (uv_loop, &server);
@@ -264,7 +285,7 @@ int main (int argc, char** argv)
     uv_timer_t timer;
     r = uv_timer_init(uv_default_loop(), &timer);
     assert(r == 0);
-    r = uv_timer_start(&timer, timer_cb, 10000, 10000);
+   // r = uv_timer_start(&timer, timer_cb, 10000, 10000);
     assert(r == 0);
 	
   	r = uv_mutex_init(&mutex);
