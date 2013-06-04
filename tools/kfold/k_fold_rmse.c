@@ -16,17 +16,19 @@
 #include "sparse_matrix.h"
 #include "social_reg.h"
 #include "model_parameters.h"
+
 #define ABS(a) ((a)<0 ? -(a) : (a))
-double RMSE_mean (k_fold_parameters_t k_fold_params)
+error_t RMSE_mean (k_fold_parameters_t k_fold_params)
 {
-	double RMSE_sum;
-	int index;
 	
+	int index;
+	error_t err, err_sum;
 	learned_factors_t *learned;
 	training_set_t* tset = NULL;
 	training_set_t* validation_set = NULL;
 	k_fold_params.model.parameters = k_fold_params.params;
-	RMSE_sum = 0;
+	err_sum.MAE = 0;
+	err_sum.RMSE = 0;
 	if(k_fold_params.model.parameters.algoithm_type == SOCIAL)
 	{
 		k_fold_params.model.social_matrix = extract_social_realtions(k_fold_params.social_relations_file_path,
@@ -41,9 +43,10 @@ double RMSE_mean (k_fold_parameters_t k_fold_params)
 		
 		compile_training_set (tset);
 		learned = learn(tset,k_fold_params.model);
-		RMSE_sum += RMSE (learned,validation_set,tset,k_fold_params);
-		
-		free_learned_factors(learned);
+		err = RMSE (learned,validation_set,tset,k_fold_params);
+		err_sum.RMSE += err.RMSE;
+		err_sum.MAE += err.MAE;
+		//free_learned_factors(learned);
 		free_training_set (tset);
 		free_training_set (validation_set);
 	}
@@ -51,22 +54,26 @@ double RMSE_mean (k_fold_parameters_t k_fold_params)
 	{
 		free(k_fold_params.model.social_matrix);
 	}
-	return (RMSE_sum / k_fold_params.K);
+	err_sum.RMSE /= k_fold_params.K;
+	err_sum.MAE /= k_fold_params.K;
+	return (err_sum);
 }
 
 
 
-double RMSE (learned_factors_t* learned, training_set_t * _validation_set,
+error_t RMSE (learned_factors_t* learned, training_set_t * _validation_set,
              training_set_t * tset,k_fold_parameters_t k_fold_params)
 {
 	unsigned int i;
-	double sum = 0;
+	error_t e;
 	double a;
 	size_t s;
 	size_t u;
 	rating_estimator_parameters_t* estim_param=malloc(sizeof(rating_estimator_parameters_t));
 	estim_param->lfactors=learned;
 	estim_param->tset=tset;
+	e.RMSE=0;
+	e.MAE=0;
 	for (s = 0; s < _validation_set->training_set_size; s++)
 	{
 		i = _validation_set->ratings->entries[s].row_i;
@@ -74,10 +81,13 @@ double RMSE (learned_factors_t* learned, training_set_t * _validation_set,
 		estim_param->item_index = i;
 		estim_param->user_index = u;
 		a = estimate_rating_from_factors(estim_param,k_fold_params.model);
-		sum += pow (_validation_set->ratings->entries[s].value -
-			a , 2) / ((double)_validation_set->training_set_size);
+		e.RMSE += pow (_validation_set->ratings->entries[s].value -
+			a , 2) / ((double)_validation_set->training_set_size);	
+		e.MAE += ABS(_validation_set->ratings->entries[s].value - a)/ ((double)_validation_set->training_set_size);
 	}
-	RLog ("RMSE = %f \n", sqrtf (sum) );
+	e.RMSE = sqrtf(e.RMSE);
+	RLog ("RMSE = %f \n", e.RMSE );
+	RLog ("MAE = %f \n", e.MAE );
 	free(estim_param);
-	return (sqrtf (sum) );
+	return (e );
 }

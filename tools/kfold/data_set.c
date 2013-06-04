@@ -11,7 +11,7 @@ int extract_data (struct k_fold_parameters _k_fold_params, training_set_t** _t_s
                   size_t index)
 {
 	FILE* file;
-	unsigned int i, j, ss;
+	unsigned int i, j, ss,k;
 	double m;
 
 	_k_fold_params.params.training_set_size =
@@ -41,18 +41,18 @@ int extract_data (struct k_fold_parameters _k_fold_params, training_set_t** _t_s
 
 	while (!feof (file) )
 	{
-		if (fscanf (file, "%u %u %lf", &i, &j, &m) < 3)
+		if (fscanf (file, "%u %u %lf %u", &i, &j, &m,&k) < 3)
 		{
 			break;
 		}
 		++ss;
 		if ( ss % (size_t) _k_fold_params.K == index )
 		{
-			set_known_rating (i  , j , (float) m, *_validation_set);
+			set_known_rating (i-1  , j-1 , (float) m, *_validation_set);
 		}
 		else
 		{
-			set_known_rating (i  , j  , (float) m, *_t_set);
+			set_known_rating (i -1 , j-1  , (float) m, *_t_set);
 		}
 	}
 

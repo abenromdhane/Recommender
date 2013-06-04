@@ -4,7 +4,7 @@
 #include "k_fold_parameters.h"
 #include "training_set.h"
 #include "sparse_matrix.h"
-
+#include "error.h"
 
 /*
 * RMSE : Calculate the RMSE between a validation set and 
@@ -18,7 +18,7 @@
 *	Returns :
 *		return the RMSE
 **/
-double RMSE (learned_factors_t* learned, training_set_t * _validation_set,
+error_t RMSE (learned_factors_t* learned, training_set_t * _validation_set,
              training_set_t * tset,k_fold_parameters_t k_fold_params) ;
 
 /*
@@ -29,6 +29,6 @@ double RMSE (learned_factors_t* learned, training_set_t * _validation_set,
 *Returns :
 *		return the RMSE
 **/
-double RMSE_mean(k_fold_parameters_t k_fold_params);
+error_t RMSE_mean(k_fold_parameters_t k_fold_params);
 
 #endif
