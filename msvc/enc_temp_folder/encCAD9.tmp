@@ -243,11 +243,13 @@ int main (int argc, char** argv)
 		}
 	else
 	{
+		for (k_fold_params.params.bin_width=40;k_fold_params.params.bin_width<160;k_fold_params.params.bin_width+=20)
+		{
 		error_t e= RMSE_mean (k_fold_params);
-		
-		
-		printf (" %f", e.RMSE );
-		printf (" %f \n", e.MAE );
+		FILE* out= fopen("out.csv","a+");
+		fprintf (out,"%s, %u ", argv[14], k_fold_params.params.bin_width );
+		fprintf (out,", %f", e.RMSE );
+		fprintf (out,", %f \n", e.MAE );
 		
 	}
 	free_recommended_items (r_items);

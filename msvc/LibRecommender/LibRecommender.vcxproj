@@ -47,6 +47,7 @@
   <ItemGroup>
     <ClInclude Include="..\..\src\binary_heap.h" />
     <ClInclude Include="..\..\src\box_muller.h" />
+    <ClInclude Include="..\..\src\error.h" />
     <ClInclude Include="..\..\src\float_tester.h" />
     <ClInclude Include="..\..\src\items_rated_by_user.h" />
     <ClInclude Include="..\..\src\learned_factors.h" />
