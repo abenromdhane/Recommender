@@ -160,4 +160,8 @@ add_item(training_set_t* tset);
 
 
 void add_training_set(training_set_t * tset, training_set_t * new_tset);
+
+coo_matrix_t* get_top_rated_items(training_set_t * tset, size_t user_id, size_t number);
+
+coo_matrix_t* get_rated_items(training_set_t * tset, size_t user_id);
 #endif /* TRAINING_SET_H */

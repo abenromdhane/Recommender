@@ -9,6 +9,7 @@
 #include "http-parser/http_parser.h"
 #include "post_parse.h"
 
+
 #define CHECK(r, msg) \
 if (r) { \
 uv_err_t err = uv_last_error(uv_loop); \
@@ -22,20 +23,32 @@ exit(1); \
 
 #define HEADER \
 "HTTP/1.1 200 OK\r\n" \
-"Content-Type: text/plain\r\n" \
+"Content-Type: application/json \r\n" \
+"Access-Control-Allow-Origin: * \r\n" \
 "Content-Length: "
 
-#define RESPONSE \
+#define POST_SUCCESS \
 "HTTP/1.1 200 OK\r\n" \
-"Content-Type: text/plain\r\n" \
-"Content-Length: 12\r\n" \
-"\r\n" \
-"hello world\n"
+"Content-Type: application/json\r\n" \
+"Access-Control-Allow-Origin: * \r\n" \
+"Content-Length: 16 \r\n" \
+"\r\n"\
+"{\"status\": \"OK\"}\n" 
+
+
+#define POST_ERROR \
+"HTTP/1.1 200 OK\r\n" \
+"Content-Type: application/json\r\n" \
+"Access-Control-Allow-Origin: * \r\n" \
+"Content-Length: 17 \r\n" \
+"\r\n"\
+"{status: \"ERROR\"}\n" 
 
 static uv_loop_t* uv_loop;
 static uv_tcp_t server;
 static http_parser_settings parser_settings;
-static uv_mutex_t mutex;
+static uv_mutex_t factors_mutex;
+static uv_mutex_t tset_mutex;
 
 struct learned_factors* factors;
 struct learned_factors* factors_backup;
@@ -108,7 +121,7 @@ void on_connect (uv_stream_t* server_handle, int status)
 	client_t* client = malloc (sizeof (client_t) );
 	client->request_num = request_num;
 
-	//LOGF ("[ %5d ] new connection", request_num++);
+	LOGF ("[ %5d ] new connection", request_num++);
 
 	uv_tcp_init (uv_loop, &client->handle);
 	http_parser_init (&client->parser, HTTP_REQUEST);
@@ -148,19 +161,23 @@ int on_headers_complete (http_parser* parser)
 int on_url (http_parser* parser, const char *at, size_t length)
 {
 	client_t* client = (client_t*) parser->data;
-
-	//LOGF ("[ %5d ] url parsed", client->request_num);
+	if(parser->method != 1)
+		return 0;
+	LOGF ("[ %5d ] url parsed", client->request_num);
 	struct http_parser_url *u = malloc (sizeof (struct http_parser_url) );
 	uv_tcp_t* handle = &client->handle;
-	char* path = malloc (length * sizeof (char) );
-	char * content = malloc (1024);
-	char * buffer = malloc (1024);
+	char* path = malloc ((length +1)* sizeof (char) );
+	char * content = malloc (20480);
+	char * buffer = malloc (20480);
 	uv_buf_t resbuf;
 	strncpy (path, at, length);
-	printf ("%s \n", path);
-	size_t user_id;
-	sscanf (path, "/user/%u", &user_id);
-	if (user_id > server_param->model.parameters.users_number)
+	size_t user_id=server_param->model.parameters.users_number;
+	path[length]=0;
+	char* javascript_callback = malloc(50);
+	javascript_callback[0]='\0';
+	sscanf (path, "/user=%u", &user_id);
+	
+	if (user_id >= server_param->model.parameters.users_number)
 	{
 		strcpy (content, "{ \n"\
 		        "\"error\": { \n"\
@@ -172,7 +189,7 @@ int on_url (http_parser* parser, const char *at, size_t length)
 	else
 	{
 		rating_estimator_parameters_t* estim_param = malloc (sizeof (rating_estimator_parameters_t) );
-		if (uv_mutex_trylock(&mutex))
+		if (uv_mutex_trylock(&factors_mutex))
 		{
 		estim_param->lfactors = factors_backup;
 		}else
@@ -182,23 +199,50 @@ int on_url (http_parser* parser, const char *at, size_t length)
 		estim_param->tset = training_set;
 		estim_param->user_index = user_id;
 		recommended_items_t* rec = recommend_items (estim_param, server_param->model, 4);
-		uv_mutex_unlock(&mutex);
-		//LOG ("recommendation completed");
+		uv_mutex_unlock(&factors_mutex);
+		LOG ("recommendation completed");
 		int i;
-		sprintf (content, "{ \n \"user_index\" : %u, \n",user_id);
+		if(javascript_callback[0]!='\0')
+		{
+			sprintf (content, "%s({ \n \"user_index\" : %u, \n",javascript_callback,user_id);
+		}else
+		{
+			sprintf (content, "{ \n \"user_index\" : %u, \n",user_id);
+		}
 		sprintf (content, "%s \"recommended_items\" : [ \n",content);
 		for (i = 0; i < rec->items_number - 1; i++)
 		{
 			sprintf (content, "%s { \"item\" : %u , \"rating\" : %lf }, \n", content, rec->items[i].index, rec->items[i].rating);
 		}
-		sprintf (content, "%s { \"item\" : %u , \"rating\" : %lf } \n", content, rec->items[rec->items_number - 1].index, rec->items[rec->items_number - 1].rating);
-		sprintf (content, "%s ] \n }", content);
+		sprintf (content, "%s { \"item\" : %u , \"rating\" : %lf } \n ], \n", content, rec->items[rec->items_number - 1].index, rec->items[rec->items_number - 1].rating);
+		coo_matrix_t* top_rated_items=get_top_rated_items(training_set,user_id,6);
+		sprintf (content, "%s \"top_rated_items\" : [ \n",content);
+		for(i=0;i < top_rated_items->size - 1; i++)
+		{
+			sprintf (content, "%s { \"item\" : %u , \"rating\" : %lf }, \n", 
+				 content, top_rated_items->entries[i].row_i, top_rated_items->entries[i].value);
+		}
+			sprintf (content, "%s { \"item\" : %u , \"rating\" : %lf } \n ], \n", 
+				 content, top_rated_items->entries[top_rated_items->size-1].row_i, top_rated_items->entries[top_rated_items->size-1].value);
+		coo_matrix_t* rated_items=get_rated_items(training_set,user_id);
+		sprintf (content, "%s \"rated_items\" : [ \n",content);
+		for(i=0;i < rated_items->current_size; i++)
+		{
+			sprintf (content, "%s { \"item\" : %u , \"rating\" : %lf }, \n", 
+				 content, rated_items->entries[i].row_i, rated_items->entries[i].value);
+		}
+			sprintf (content, "%s { \"item\" : %u , \"rating\" : %lf } \n ] \n", 
+				 content, rated_items->entries[rated_items->current_size-1].row_i, rated_items->entries[rated_items->current_size-1].value);
+		sprintf (content, "%s  \n }", content);
+		free_coo_matrix(rated_items);
+		free_coo_matrix(top_rated_items);
+		
 	}
-	sprintf (buffer, "%s %u \r\n\r\n%s\n", HEADER, strlen (content), content);
+		sprintf (buffer, "%s %u \r\n\r\n%s\n", HEADER, strlen (content), content);
 
 		resbuf.base = buffer;
 		resbuf.len = strlen (resbuf.base);
-		printf ("%d", resbuf.len);
+		printf("%s",resbuf.base);
 		uv_write (
 	    &client->write_req,
 	    (uv_stream_t*) &client->handle,
@@ -214,12 +258,12 @@ static void timer_close_cb(uv_handle_t* handle) {
 }
 static void thread_method (void* arg)
 {
-  uv_mutex_trylock(&mutex);
+  uv_mutex_trylock(&factors_mutex);
   free_learned_factors(factors);
   compile_training_set (training_set);
   factors = learn (training_set, server_param->model);
   //sleep(5);
-  uv_mutex_unlock(&mutex);
+  uv_mutex_unlock(&factors_mutex);
   free_learned_factors(factors_backup);
   factors_backup = copy_learned_factors (factors);
   //LOG ("Learning completed");
@@ -236,21 +280,39 @@ static void timer_cb(uv_timer_t* handle, int status) {
 }
 int on_value (http_parser* parser, const char *at, size_t length)
 {	
-	client_t* client = (client_t*)(parser->data);
-
-   
-char* a;
-if(!complete[client->request_num])
-{
-
-a = parse_post_request(at,"(user=[[:digit:]]{0,4}&item=[[:digit:]]{0,4})");
-	if(a!=NULL)
-		complete[client->request_num]=1;
-	else
+	if(parser->method!=3)
 		return 0;
-	LOGF("%s \n", a);
-	LOGF("%u %u \n", length, client->request_num);
-}
+	client_t* client = (client_t*)(parser->data);
+	uv_tcp_t* handle = &client->handle;
+	uv_buf_t resbuf;
+	coo_entry_t* rating;
+	if(!complete[client->request_num])
+	{
+	rating = get_rating_from_http(at,"(user=[[:digit:]]{0,4}&item=[[:digit:]]{0,4}&rating=[[:digit:]])");
+	complete[client->request_num]=1;
+	if(rating!=NULL)
+	{
+		LOGF("%u %u %lf \n", rating->row_i,rating->column_j, rating->value);
+		uv_mutex_lock(&tset_mutex);
+		compile_training_set(training_set);
+		add_rating(rating->row_i,rating->column_j,rating->value,training_set);
+		uv_mutex_unlock(&tset_mutex);
+		resbuf.base = malloc(sizeof(POST_SUCCESS));
+		strcpy(resbuf.base,POST_SUCCESS);
+		resbuf.len=sizeof(POST_SUCCESS);
+		printf("%s",resbuf.base);
+		free(rating);
+	}else
+	{
+		LOG("Parameters incorrect");
+		resbuf.base=POST_ERROR;
+		resbuf.len=sizeof(POST_ERROR);
+	}
+	
+	uv_write(&client->write_req, (uv_stream_t*) handle, &resbuf, 1, after_write);
+	
+
+	}else return 1;
 
 	return 0;
 }
@@ -267,7 +329,7 @@ int main (int argc, char** argv)
 	LOG ("Learning completed");
 	complete = malloc(20 *sizeof(int));
 	memset(complete,0,20 *sizeof(int));
-	parser_settings.on_headers_complete = on_headers_complete;
+	//parser_settings.on_headers_complete = on_headers_complete;
 	parser_settings.on_url = on_url;
 	parser_settings.on_header_value = on_value;
 	uv_loop = uv_default_loop();
@@ -282,13 +344,15 @@ int main (int argc, char** argv)
 	uv_listen ( (uv_stream_t*) &server, 128, on_connect);
 
 	LOGF ("listening on port %u", server_param->port);
-    uv_timer_t timer;
-    r = uv_timer_init(uv_default_loop(), &timer);
-    assert(r == 0);
-   // r = uv_timer_start(&timer, timer_cb, 10000, 10000);
-    assert(r == 0);
+    	uv_timer_t timer;
+    	r = uv_timer_init(uv_default_loop(), &timer);
+    	assert(r == 0);
+   	r = uv_timer_start(&timer, timer_cb, 10000, 10000);
+    	assert(r == 0);
 	
-  	r = uv_mutex_init(&mutex);
+  	r = uv_mutex_init(&factors_mutex);
+  	assert(r == 0);
+  	r = uv_mutex_init(&tset_mutex);
   	assert(r == 0);
 	uv_run (uv_loop);
 }

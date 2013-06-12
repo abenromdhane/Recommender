@@ -5,10 +5,9 @@
 #include <stdio.h>
 char* parse_post_request(const char *str_request, const char *str_regex)
 {
-regex_t preg;
-	char* a=malloc(1024);
+   regex_t preg;
+   char* a=malloc(1024);
    int err;
-	/* (1) */
    err = regcomp (&preg, str_regex, REG_EXTENDED);
    if (err == 0)
    {
@@ -20,11 +19,11 @@ regex_t preg;
       pmatch = malloc (sizeof (*pmatch) * nmatch);
       if (pmatch)
       {
-/* (2) */
+
          match = regexec (&preg, str_request, nmatch, pmatch, 0);
-/* (3) */
+
          regfree (&preg);
-/* (4) */
+
          if (match == 0)
          {
             
@@ -37,43 +36,34 @@ regex_t preg;
             {
                strncpy (a, &str_request[start], size);
                a[size] = '\0';
-               printf ("%s\n", a);
                return a;
             }
          }
-/* (5) */
-         else if (match == REG_NOMATCH)
-         {
-            return NULL;
-         }
-/* (6) */
-         else
-         {
-			
-            char *text;
-            size_t size;
-
-/* (7) */
-            size = regerror (err, &preg, NULL, 0);
-            text = malloc (sizeof (*text) * size);
-            if (text)
-            {
-/* (8) */
-               regerror (err, &preg, text, size);
-               fprintf (stderr, "%s\n", text);
-               free (text);
-            }
-            else
-            {
-               fprintf (stderr, "Memoire insuffisante\n");
-              return NULL;
-            }
-         }
       }
+   
       else
       {
-         fprintf (stderr, "Memoire insuffisante\n");
          return NULL;
       }
 }
+}
+
+
+coo_entry_t* get_rating_from_http(const char *str_request, const char *str_regex)
+{
+
+	char* header_fields = parse_post_request(str_request, str_regex);
+	size_t r;
+	if (header_fields==NULL)
+	{
+		return NULL;
+	}
+	coo_entry_t* rating= malloc(sizeof(coo_entry_t));		
+	if(sscanf(header_fields,"user=%u&item=%u&rating=%d",&rating->row_i,&rating->column_j,&r)!=3)
+	{
+		free(rating);
+		return NULL;
+	}
+	rating->value = (float) r;
+	return rating;
 }

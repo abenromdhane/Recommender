@@ -148,6 +148,19 @@ add_item (training_set_t* tset)
 
 void add_rating (size_t user_index, size_t item_index, float _value, training_set_t* tset)
 {
+size_t i;
+	for (i=0;i<tset->training_set_size;i++)
+	{
+		if((tset->ratings->entries[i].row_i==item_index)&&(tset->ratings->entries[i].column_j==user_index))
+		{
+			tset->ratings->entries[i].value= _value;
+			break;
+		}
+	}
+	if(i>tset->training_set_size)
+	{
+		insert_coo_matrix(_value,item_index,user_index,tset->ratings);
+	}
 	insert_value (tset->ratings_matrix,  user_index, item_index , _value);
 	tset->training_set_size++;
 	tset->ratings_sum += _value;
@@ -167,4 +180,64 @@ void add_training_set(training_set_t * tset, training_set_t * new_tset)
 	tset->ratings_sum = ratings_sum;
 	compile_training_set(tset);
 
+}
+
+coo_matrix_t* get_top_rated_items(training_set_t * tset, size_t user_id, size_t number)
+{
+	coo_matrix_t* rated_items, *ratings;
+	size_t i,j;
+	size_t current_number=number;
+	rated_items=init_coo_matrix(number);
+	ratings = tset->ratings;
+	srand(1);
+	for (i=0;i<tset->training_set_size;i++){
+		if(tset->ratings->entries[i].column_j==user_id){
+			if(current_number>0)
+			{
+				insert_coo_matrix(ratings->entries[i].value,ratings->entries[i].row_i,user_id,rated_items);
+				current_number--;
+			}
+			else
+			{
+				size_t min_pos=0;
+				for(j=1;j<number;j++)
+				{
+					if(rated_items->entries[j].value < rated_items->entries[min_pos].value)
+					{
+						min_pos=j;
+					}else if(((double)rand()/RAND_MAX>0.5)&&(rated_items->entries[j].value = rated_items->entries[min_pos].value)){
+						min_pos=j;
+					}
+				}
+				if(rated_items->entries[min_pos].value<ratings->entries[i].value)
+				{
+					rated_items->entries[min_pos].value=ratings->entries[i].value;
+					rated_items->entries[min_pos].row_i=ratings->entries[i].row_i;
+				}else if(rated_items->entries[min_pos].value==ratings->entries[i].value)
+				{
+					if((double)rand()/RAND_MAX>0.5)
+					{
+					rated_items->entries[min_pos].value=ratings->entries[i].value;
+					rated_items->entries[min_pos].row_i=ratings->entries[i].row_i;
+					}
+				}
+			}
+		}
+	}
+	return rated_items;
+}
+
+coo_matrix_t* get_rated_items(training_set_t * tset, size_t user_id)
+{
+	coo_matrix_t* rated_items, *ratings;
+	size_t i;
+	rated_items=init_coo_matrix(tset->items_number);
+	ratings = tset->ratings;
+	for (i=0;i<tset->training_set_size;i++){
+		if(tset->ratings->entries[i].column_j==user_id)
+		{
+			insert_coo_matrix(ratings->entries[i].value,ratings->entries[i].row_i,user_id,rated_items);
+		}
+	}
+	return rated_items;
 }

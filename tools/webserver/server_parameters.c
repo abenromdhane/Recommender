@@ -41,7 +41,7 @@ server_parameters_t* parse_arguments (int argc, char** argv)
 	arguments_params->port = atoi (argv[1]);
 	arguments_params->model.parameters.training_set_size = atoi (argv[2]);
 
-	if (arguments_params->port < 121)
+	if (arguments_params->port < 2)
 	{
 		printf ("port must be greater or equal than 2 \n ");
 		system ("pause");
