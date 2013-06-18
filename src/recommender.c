@@ -60,7 +60,7 @@ learn(struct training_set* tset, struct learning_model model)
 }
 
 /*
- * estimate_rating_from_factors:  Return the approximates user’s rating of an item based on 
+ * estimate_rating_from_factors:  Return the approximates userâ€™s rating of an item based on 
  *                                some learned factors.
  */
 double
@@ -82,26 +82,31 @@ recommended_items_t*
 	recommended_items_t* r_items = init_recommended_items(items_number);
 
 	assert (model.learning_algorithm && model.rating_estimator);
-
+	compile_training_set(estim_param->tset);
 	for (j = 0; j < estim_param->tset->items_number; j++)
 	{
 		estim_param->item_index =j;
+		if(get_element(j, estim_param->user_index, estim_param->tset->ratings_matrix)==0)
+		{
 		insert_recommended_item(j, (float) model.rating_estimator(estim_param), r_items);
+		}
 	}
 
 	j = 0;
+	
 	while (r_items->bheap->filled_elements)
 	{
 		recommended_item_t *v = NULL;
 		v = pop_binary_heap(r_items->bheap);
+		
+			if (v != NULL)
+			{
+				r_items->items[j] = *(v);
+				free(v);
+			}
 
-		if (v != NULL)
-		{
-			r_items->items[j] = *(v);
-			free(v);
-		}
-
-		j++;
+			j++;
+		
 	}
 
 	return r_items;
@@ -117,3 +122,4 @@ update_learning(training_set_t * old_tset, training_set_t* new_tset, learned_fac
 
 	model.update_algorithm(old_tset, new_tset, lfactors,model.parameters);
 }
+

@@ -48,6 +48,7 @@ static uv_loop_t* uv_loop;
 static uv_tcp_t server;
 static http_parser_settings parser_settings;
 static uv_mutex_t factors_mutex;
+static uv_mutex_t factors_backup_mutex;
 static uv_mutex_t tset_mutex;
 
 struct learned_factors* factors;
@@ -167,14 +168,12 @@ int on_url (http_parser* parser, const char *at, size_t length)
 	struct http_parser_url *u = malloc (sizeof (struct http_parser_url) );
 	uv_tcp_t* handle = &client->handle;
 	char* path = malloc ((length +1)* sizeof (char) );
-	char * content = malloc (20480);
-	char * buffer = malloc (20480);
+	char * content = malloc (304800);
+	char * buffer = malloc (304800);
 	uv_buf_t resbuf;
 	strncpy (path, at, length);
 	size_t user_id=server_param->model.parameters.users_number;
 	path[length]=0;
-	char* javascript_callback = malloc(50);
-	javascript_callback[0]='\0';
 	sscanf (path, "/user=%u", &user_id);
 	
 	if (user_id >= server_param->model.parameters.users_number)
@@ -189,26 +188,30 @@ int on_url (http_parser* parser, const char *at, size_t length)
 	else
 	{
 		rating_estimator_parameters_t* estim_param = malloc (sizeof (rating_estimator_parameters_t) );
+		int backup=0;
 		if (uv_mutex_trylock(&factors_mutex))
 		{
-		estim_param->lfactors = factors_backup;
+		uv_mutex_lock(&factors_backup_mutex);
+		backup=1;
+		estim_param->lfactors = factors;
+		printf("Backup \n");
+	        printf("factors_backup_mutex locked outside of thread \n");
 		}else
 		{
-		estim_param->lfactors = factors;
+		estim_param->lfactors = factors_backup;
 		}
 		estim_param->tset = training_set;
 		estim_param->user_index = user_id;
 		recommended_items_t* rec = recommend_items (estim_param, server_param->model, 4);
 		uv_mutex_unlock(&factors_mutex);
+		if(backup==1)
+		{
+			uv_mutex_unlock(&factors_backup_mutex);
+		}
 		LOG ("recommendation completed");
 		int i;
-		if(javascript_callback[0]!='\0')
-		{
-			sprintf (content, "%s({ \n \"user_index\" : %u, \n",javascript_callback,user_id);
-		}else
-		{
-			sprintf (content, "{ \n \"user_index\" : %u, \n",user_id);
-		}
+		sprintf (content, "{ \n \"user_index\" : %u, \n",user_id);
+		
 		sprintf (content, "%s \"recommended_items\" : [ \n",content);
 		for (i = 0; i < rec->items_number - 1; i++)
 		{
@@ -242,7 +245,7 @@ int on_url (http_parser* parser, const char *at, size_t length)
 
 		resbuf.base = buffer;
 		resbuf.len = strlen (resbuf.base);
-		printf("%s",resbuf.base);
+		
 		uv_write (
 	    &client->write_req,
 	    (uv_stream_t*) &client->handle,
@@ -258,15 +261,17 @@ static void timer_close_cb(uv_handle_t* handle) {
 }
 static void thread_method (void* arg)
 {
-  uv_mutex_trylock(&factors_mutex);
+  uv_mutex_lock(&factors_mutex);
   free_learned_factors(factors);
   compile_training_set (training_set);
   factors = learn (training_set, server_param->model);
-  //sleep(5);
-  uv_mutex_unlock(&factors_mutex);
+  
+  uv_mutex_lock(&factors_backup_mutex);
+  printf("factors_backup_mutex locked inside of thread \n");
   free_learned_factors(factors_backup);
   factors_backup = copy_learned_factors (factors);
-  //LOG ("Learning completed");
+  uv_mutex_unlock(&factors_backup_mutex);
+  uv_mutex_unlock(&factors_mutex);
 }
 static void timer_cb(uv_timer_t* handle, int status) {
   printf("TIMER_CB\n");
@@ -351,6 +356,8 @@ int main (int argc, char** argv)
     	assert(r == 0);
 	
   	r = uv_mutex_init(&factors_mutex);
+  	assert(r == 0);
+  	r = uv_mutex_init(&factors_backup_mutex);
   	assert(r == 0);
   	r = uv_mutex_init(&tset_mutex);
   	assert(r == 0);

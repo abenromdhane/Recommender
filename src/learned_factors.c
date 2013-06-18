@@ -156,23 +156,29 @@ copy_learned_factors (struct learned_factors* factors)
 	factors_copy->ratings_average = factors->ratings_average;
 	factors_copy->x =NULL;
 	factors_copy->y =NULL;
-	if (factors->x != 0)
+	factors_copy->user_factor_vectors = malloc (sizeof (double*) *factors->users_number);
+	for (i = 0; i < factors->users_number; i++)
+	{
+		factors_copy->user_factor_vectors[i] = malloc (sizeof (double) * factors->dimensionality);
+		memcpy (factors_copy->user_factor_vectors[i], factors->user_factor_vectors[i], factors->dimensionality * sizeof (double) );
+	}
+	if (factors->x)
 	{
 		factors_copy->x = malloc (sizeof (double*) *factors->items_number);
 	}
-	if (factors->y != 0)
+	if (factors->y)
 	{
 		factors_copy->y = malloc (sizeof (double*) *factors->items_number);
 	}
 	factors_copy->item_factor_vectors = malloc (sizeof (double*) *factors->items_number);
 	for (i = 0; i < factors->items_number; i++)
 	{
-		if (factors->x != 0)
+		if (factors->x)
 		{
 			factors_copy->x[i] = malloc (sizeof (double) * factors->items_number);
 			memcpy (factors_copy->x[i], factors->x[i], factors->items_number * sizeof (double) );
 		}
-		if (factors->y != 0)
+		if (factors->y)
 		{
 			factors_copy->y[i] = malloc (sizeof (double) * factors->dimensionality);
 			memcpy (factors_copy->y[i], factors->y[i], factors->dimensionality * sizeof (double) );
@@ -181,12 +187,7 @@ copy_learned_factors (struct learned_factors* factors)
 		memcpy (factors_copy->item_factor_vectors[i], factors->item_factor_vectors[i], factors->dimensionality * sizeof (double) );
 	}
 
-	factors_copy->user_factor_vectors = malloc (sizeof (double*) *factors->users_number);
-	for (i = 0; i < factors->users_number; i++)
-	{
-		factors_copy->user_factor_vectors[i] = malloc (sizeof (double) * factors->dimensionality);
-		memcpy (factors_copy->user_factor_vectors[i], factors->user_factor_vectors[i], factors->dimensionality * sizeof (double) );
-	}
+	
 	factors_copy->user_bias = malloc (sizeof (double) *factors->users_number);
 	factors_copy->item_bias = malloc (sizeof (double) *factors->items_number);
 	memcpy (factors_copy->user_bias, factors->user_bias, factors->users_number * sizeof (double) );
